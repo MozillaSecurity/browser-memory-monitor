@@ -5,18 +5,18 @@
 
 from __future__ import annotations
 
-import os
 import signal
 import sys
 from argparse import Namespace
 from logging import getLogger
+from os import kill
 from platform import system
 from subprocess import Popen, check_call
 from sys import version_info
 from time import time
 from typing import NoReturn, Sequence
 
-import psutil
+from psutil import Process, wait_procs
 
 LOG = getLogger("bmm")
 
@@ -35,7 +35,7 @@ except PackageNotFoundError:
     __version__ = None
 
 
-def find_process(parent: psutil.Process, name: str) -> psutil.Process | None:
+def find_process(parent: Process, name: str) -> Process | None:
     """Search recursively for a child process of parent, where the
     child process contains the given name.
 
@@ -44,7 +44,7 @@ def find_process(parent: psutil.Process, name: str) -> psutil.Process | None:
         name: substring of process name to search for
 
     Returns:
-        psutil.Process of most senior process matching,
+        Process of most senior process matching,
         or None if no process found
     """
     for child in parent.children(recursive=True):
@@ -54,7 +54,7 @@ def find_process(parent: psutil.Process, name: str) -> psutil.Process | None:
     return None
 
 
-def memory_usage(process: psutil.Process) -> float:
+def memory_usage(process: Process) -> float:
     """aggregate memory of a process tree
 
     Arguments:
@@ -88,7 +88,7 @@ def ctrl_c(pid: int) -> None:
             ]
         )
     else:
-        os.kill(pid, signal.SIGINT)
+        kill(pid, signal.SIGINT)
 
 
 def main(options: Namespace, command: Sequence[str]) -> NoReturn:
@@ -101,14 +101,14 @@ def main(options: Namespace, command: Sequence[str]) -> NoReturn:
 
     # launch subprocess
     with Popen(command) as hnd:
-        proc = psutil.Process(hnd.pid)
+        proc = Process(hnd.pid)
 
         # poll pre-interval until some child process matches options.process
         while True:
             browser = find_process(hnd.pid, options.process)
             if browser is not None:
                 break
-            gone, _ = psutil.wait_procs([proc], timeout=options.pre_interval)
+            gone, _ = wait_procs([proc], timeout=options.pre_interval)
             if gone:
                 LOG.warning(
                     "process exited before '%s' could be found (returned %d)",
@@ -126,21 +126,21 @@ def main(options: Namespace, command: Sequence[str]) -> NoReturn:
                     memory = memory_usage(browser)
                     now = time()
                     print(f"MEM {memory:0.6f} {now:0.4f}", file=data)
-                    if memory >= options.limit:
+                    if options.limit and memory >= options.limit:
                         LOG.warning(
                             "process memory limit exhausted (%dMB vs %dMB)",
                             memory,
                             options.limit,
                         )
                         break
-                    if (now - start) >= options.time_limit:
+                    if options.time_limit and (now - start) >= options.time_limit:
                         LOG.warning(
                             "process time limit exceeded (%ss vs %ss)",
                             now - start,
                             options.time_limit,
                         )
                         break
-                gone, _ = psutil.wait_procs([proc], timeout=options.interval)
+                gone, _ = wait_procs([proc], timeout=options.interval)
                 if gone:
                     LOG.warning("process exited (returned %d)", gone[0].returncode)
                     sys.exit(gone[0].returncode)

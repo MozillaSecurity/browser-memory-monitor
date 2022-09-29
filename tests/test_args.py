@@ -8,7 +8,7 @@ from pytest import mark, raises
 from browser_memory_monitor.args import BrowserMemoryMonitorArgs
 
 
-def test_args_01():
+def test_args_simple():
     """test parse_args() - success"""
     BrowserMemoryMonitorArgs().parse_args(["ff", "fake.bin", "ls"])
 
@@ -42,7 +42,7 @@ def test_args_01():
         (["ff", "fake.bin", "--time-limit", "1.0", "ls"], "invalid int value", -1),
     ],
 )
-def test_args_02(capsys, args, msg, idx):
+def test_args_failure(capsys, args, msg, idx):
     """test parse_args() - failure"""
     with raises(SystemExit):
         BrowserMemoryMonitorArgs().parse_args(args)

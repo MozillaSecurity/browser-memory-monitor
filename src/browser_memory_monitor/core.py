@@ -34,7 +34,7 @@ else:
 
 
 try:
-    __version__ = version("browser-memory-manager")
+    __version__ = version("browser-memory-monitor")
 except PackageNotFoundError:
     # package is not installed
     __version__ = None

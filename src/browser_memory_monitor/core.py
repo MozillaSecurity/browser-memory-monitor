@@ -23,7 +23,11 @@ LOG = getLogger("bmm")
 
 if version_info[:2] < (3, 8):
     # pylint: disable=import-error
+    from subprocess import list2cmdline  # pylint: disable=ungrouped-imports
+
     from importlib_metadata import PackageNotFoundError, version  # pragma: no cover
+
+    shlex.join = list2cmdline  # type: ignore
 else:
     # pylint: disable=import-error
     from importlib.metadata import PackageNotFoundError, version  # pragma: no cover

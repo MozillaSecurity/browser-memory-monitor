@@ -15,7 +15,7 @@ from platform import system
 from subprocess import Popen, check_call
 from sys import version_info
 from time import time
-from typing import NoReturn, Sequence
+from typing import NoReturn
 
 from psutil import Process, wait_procs
 
@@ -92,16 +92,15 @@ def ctrl_c(pid: int) -> None:
         kill(pid, signal.SIGINT)
 
 
-def main(options: Namespace, command: Sequence[str]) -> NoReturn:
+def main(options: Namespace) -> NoReturn:
     """main entrypoint for browser-memory-monitor
 
     Arguments:
         options: parsed arguments
-        command: subcommand to launch with limits
     """
 
     # launch subprocess
-    with Popen(command) as hnd:
+    with Popen(options.command) as hnd:
         try:
             proc = Process(hnd.pid)
 
@@ -122,12 +121,18 @@ def main(options: Namespace, command: Sequence[str]) -> NoReturn:
             # poll interval until exits or time-limit or memory-limit
             start = time()
             with options.data.open("w") as data:
-                print(f"CMDLINE {shlex.join(browser.cmdline())}", file=data)
+                if options.format == "mprof":
+                    print(f"CMDLINE {shlex.join(browser.cmdline())}", file=data)
+                else:
+                    print("time,memory", file=data)
                 while True:
                     if browser.is_running():
                         memory = memory_usage(browser)
                         now = time()
-                        print(f"MEM {memory:0.6f} {now:0.4f}", file=data)
+                        if options.format == "mprof":
+                            print(f"MEM {memory:0.6f} {now:0.4f}", file=data)
+                        else:
+                            print(f"{now - start:0.4f},{memory:0.6f}", file=data)
                         if options.limit and memory >= options.limit:
                             LOG.warning(
                                 "process memory limit exhausted (%0.2fMB vs %dMB)",

@@ -31,7 +31,7 @@ def test_args_simple():
             -1,
         ),
         (["", "fake.bin", "ls"], "browser must be given", -1),
-        (["ff", "fake.bin"], "Must specify a command", -1),
+        (["ff", "fake.bin"], "the following arguments are required: command", -1),
         (["ff", "fake.bin", "--limit", "-1", "ls"], "--limit must be positive", -1),
         (
             ["ff", "fake.bin", "--time-limit", "-1", "ls"],
@@ -47,3 +47,12 @@ def test_args_failure(capsys, args, msg, idx):
     with raises(SystemExit):
         BrowserMemoryMonitorArgs().parse_args(args)
     assert msg in capsys.readouterr()[idx]
+
+
+def test_args_overwrite(capsys, tmp_path):
+    """test no overwrite data without --force"""
+    data = tmp_path / "data.txt"
+    data.touch()
+    with raises(SystemExit):
+        BrowserMemoryMonitorArgs().parse_args(["ff", str(data), "ls"])
+    assert "Use --force to overwrite" in capsys.readouterr()[-1]

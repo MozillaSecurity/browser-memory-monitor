@@ -4,12 +4,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import os
-import sys
 from logging import DEBUG, INFO, basicConfig
 from typing import NoReturn, Sequence
 
 from .args import BrowserMemoryMonitorArgs
-from .core import __version__
 from .core import main as core_main
 
 
@@ -34,13 +32,10 @@ def main(argv: Sequence[str] | None = None) -> NoReturn:
     Arguments:
         argv: a list of arguments
     """
-    opts, cmdline = BrowserMemoryMonitorArgs().parse_args(argv)
+    opts = BrowserMemoryMonitorArgs().parse_args(argv)
     if opts.verbose or bool(os.getenv("DEBUG")):
         init_logging(DEBUG)
     else:
         init_logging()
-    if opts.version:
-        print(f"bmm version {__version__}", file=sys.stderr)
-        sys.exit(0)
 
-    core_main(opts, cmdline)
+    core_main(opts)

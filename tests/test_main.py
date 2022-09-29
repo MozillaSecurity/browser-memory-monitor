@@ -45,8 +45,9 @@ def test_main_exit_before_found(mocker):
     opts = Namespace()
     opts.browser = "test"
     opts.pre_interval = 0.5
+    opts.command = []
     with raises(SystemExit) as exc:
-        main(opts, [])
+        main(opts)
     assert exc.value.code == 123
 
 
@@ -70,9 +71,11 @@ def test_main_exit_before_poll(mocker, tmp_path):
     opts = Namespace()
     opts.data = tmp_path / "data.txt"
     opts.browser = "test"
+    opts.format = "mprof"
     opts.interval = 0.5
+    opts.command = []
     with raises(SystemExit) as exc:
-        main(opts, [])
+        main(opts)
     assert exc.value.code == 123
 
 
@@ -99,17 +102,57 @@ def test_main_memory_limit(mocker, tmp_path):
     opts = Namespace()
     opts.data = tmp_path / "data.txt"
     opts.browser = "test"
+    opts.format = "mprof"
     opts.interval = 0.5
     opts.limit = 11
     opts.time_limit = 0
+    opts.command = []
     with raises(SystemExit) as exc:
-        main(opts, [])
+        main(opts)
     assert exc.value.code == 0
     data = opts.data.read_text().splitlines()
     assert len(data) == 3
     assert data[0] == "CMDLINE hello world"
     assert data[1] == "MEM 10.000000 1.0000"
     assert data[2] == "MEM 11.000000 2.0000"
+
+
+def test_main_memory_limit_csv(mocker, tmp_path):
+    """memory limit hit"""
+    child = Mock(spec=Process)
+    child.cmdline.return_value = ["hello", "world"]
+    child.returncode = 123
+    child.is_running.return_value = True
+    mocker.patch("browser_memory_monitor.core.ctrl_c", autospec=True)
+    proc = mocker.patch("browser_memory_monitor.core.Popen", autospec=True)
+    proc.return_value.__enter__.return_value.wait.return_value = 0
+    mocker.patch("browser_memory_monitor.core.Process", autospec=True)
+    mocker.patch(
+        "browser_memory_monitor.core.find_process", autospec=True, return_value=child
+    )
+    mocker.patch(
+        "browser_memory_monitor.core.wait_procs", autospec=True, return_value=([], None)
+    )
+    mocker.patch(
+        "browser_memory_monitor.core.memory_usage", side_effect=count(10.0, 1.0)
+    )
+    mocker.patch("browser_memory_monitor.core.time", side_effect=count())
+    opts = Namespace()
+    opts.data = tmp_path / "data.txt"
+    opts.browser = "test"
+    opts.format = "csv"
+    opts.interval = 0.5
+    opts.limit = 11
+    opts.time_limit = 0
+    opts.command = []
+    with raises(SystemExit) as exc:
+        main(opts)
+    assert exc.value.code == 0
+    data = opts.data.read_text().splitlines()
+    assert len(data) == 3
+    assert data[0] == "time,memory"
+    assert data[1] == "1.0000,10.000000"
+    assert data[2] == "2.0000,11.000000"
 
 
 def test_main_time_limit(mocker, tmp_path):
@@ -136,10 +179,12 @@ def test_main_time_limit(mocker, tmp_path):
     opts.data = tmp_path / "data.txt"
     opts.browser = "test"
     opts.interval = 0.5
+    opts.format = "mprof"
     opts.limit = 0
     opts.time_limit = 5
+    opts.command = []
     with raises(SystemExit) as exc:
-        main(opts, [])
+        main(opts)
     assert exc.value.code == 0
     data = opts.data.read_text().splitlines()
     assert len(data) == 6
@@ -161,8 +206,9 @@ def test_main_exception_kills_child(mocker):
         "browser_memory_monitor.core.Process", autospec=True, side_effect=test_exc
     )
     opts = Namespace()
+    opts.command = []
     with raises(Exception) as exc:
-        main(opts, [])
+        main(opts)
     assert exc.value is test_exc
     assert ctrl_c_mock.call_count == 1
     assert ctrl_c_mock.call_args == (

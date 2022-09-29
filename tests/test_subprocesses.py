@@ -15,7 +15,7 @@ def test_find_process():
     children = []
     for pid, name in enumerate("ABCD"):
         child = Mock(spec=Process)
-        child.pid.return_value = pid
+        child.pid = pid
         child.name.return_value = name
         children.append(child)
     parent = Mock(spec=Process)

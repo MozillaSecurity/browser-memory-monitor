@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import shlex
 import signal
 import sys
 from argparse import Namespace
@@ -49,7 +50,7 @@ def find_process(parent: Process, name: str) -> Process | None:
     """
     for child in parent.children(recursive=True):
         if name in child.name():
-            LOG.debug("found browser process: %d (%s)", child.pid(), child.name())
+            LOG.debug("found browser process: %d (%s)", child.pid, child.name())
             return child
     return None
 
@@ -101,49 +102,54 @@ def main(options: Namespace, command: Sequence[str]) -> NoReturn:
 
     # launch subprocess
     with Popen(command) as hnd:
-        proc = Process(hnd.pid)
+        try:
+            proc = Process(hnd.pid)
 
-        # poll pre-interval until some child process matches options.process
-        while True:
-            browser = find_process(hnd.pid, options.process)
-            if browser is not None:
-                break
-            gone, _ = wait_procs([proc], timeout=options.pre_interval)
-            if gone:
-                LOG.warning(
-                    "process exited before '%s' could be found (returned %d)",
-                    options.process,
-                    gone[0].returncode,
-                )
-                sys.exit(gone[0].returncode)
-
-        # poll interval until exits or time-limit or memory-limit
-        start = time()
-        with options.data.open("w") as data:
-            print(f"CMDLINE {browser.cmdline()}", file=data)
+            # poll pre-interval until some child process matches options.browser
             while True:
-                if browser.is_running():
-                    memory = memory_usage(browser)
-                    now = time()
-                    print(f"MEM {memory:0.6f} {now:0.4f}", file=data)
-                    if options.limit and memory >= options.limit:
-                        LOG.warning(
-                            "process memory limit exhausted (%dMB vs %dMB)",
-                            memory,
-                            options.limit,
-                        )
-                        break
-                    if options.time_limit and (now - start) >= options.time_limit:
-                        LOG.warning(
-                            "process time limit exceeded (%ss vs %ss)",
-                            now - start,
-                            options.time_limit,
-                        )
-                        break
-                gone, _ = wait_procs([proc], timeout=options.interval)
+                browser = find_process(proc, options.browser)
+                if browser is not None:
+                    break
+                gone, _ = wait_procs([proc], timeout=options.pre_interval)
                 if gone:
-                    LOG.warning("process exited (returned %d)", gone[0].returncode)
+                    LOG.warning(
+                        "process exited before '%s' could be found (returned %d)",
+                        options.browser,
+                        gone[0].returncode,
+                    )
                     sys.exit(gone[0].returncode)
+
+            # poll interval until exits or time-limit or memory-limit
+            start = time()
+            with options.data.open("w") as data:
+                print(f"CMDLINE {shlex.join(browser.cmdline())}", file=data)
+                while True:
+                    if browser.is_running():
+                        memory = memory_usage(browser)
+                        now = time()
+                        print(f"MEM {memory:0.6f} {now:0.4f}", file=data)
+                        if options.limit and memory >= options.limit:
+                            LOG.warning(
+                                "process memory limit exhausted (%0.2fMB vs %dMB)",
+                                memory,
+                                options.limit,
+                            )
+                            break
+                        if options.time_limit and (now - start) >= options.time_limit:
+                            LOG.warning(
+                                "process time limit exceeded (%0.2fs vs %ds)",
+                                now - start,
+                                options.time_limit,
+                            )
+                            break
+                    gone, _ = wait_procs([proc], timeout=options.interval)
+                    if gone:
+                        LOG.warning("process exited (returned %d)", gone[0].returncode)
+                        sys.exit(gone[0].returncode)
+
+        except Exception:
+            ctrl_c(hnd.pid)
+            raise
 
         # either time-limit or memory-limit occurred
         # send ctrl+c to child

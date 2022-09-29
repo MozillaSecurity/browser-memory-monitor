@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from pathlib import Path
 from typing import Sequence
 
@@ -19,7 +19,12 @@ class BrowserMemoryMonitorArgs:
         """Instantiate a new instance"""
         super().__init__()  # call super for multiple-inheritance support
         if not hasattr(self, "parser"):
-            self.parser = ArgumentParser(conflict_handler="resolve", prog="bmm")
+            self.parser = ArgumentParser(
+                conflict_handler="resolve",
+                prog="bmm",
+                formatter_class=ArgumentDefaultsHelpFormatter,
+                description="Memory profiler/limiter for browsers",
+            )
 
         self.parser.add_argument(
             "--interval",

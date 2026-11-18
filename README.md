@@ -1,4 +1,3 @@
-[![Task Status](https://community-tc.services.mozilla.com/api/github/v1/repository/MozillaSecurity/browser-memory-monitor/main/badge.svg)](https://community-tc.services.mozilla.com/api/github/v1/repository/MozillaSecurity/browser-memory-monitor/main/latest)
 [![codecov](https://codecov.io/gh/MozillaSecurity/browser-memory-monitor/branch/main/graph/badge.svg)](https://codecov.io/gh/MozillaSecurity/browser-memory-monitor)
 [![Matrix](https://img.shields.io/badge/dynamic/json?color=green&label=chat&query=%24.chunk[%3F(%40.canonical_alias%3D%3D%22%23fuzzing%3Amozilla.org%22)].num_joined_members&suffix=%20users&url=https%3A%2F%2Fmozilla.modular.im%2F_matrix%2Fclient%2Fr0%2FpublicRooms&style=flat&logo=matrix)](https://riot.im/app/#/room/#fuzzing:mozilla.org)
 [![PyPI](https://img.shields.io/pypi/v/browser-memory-monitor)](https://pypi.org/project/browser-memory-monitor)
